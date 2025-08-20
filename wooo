@@ -1,0 +1,199 @@
+# app.py
+from datetime import datetime, timezone
+from flask import Flask, render_template_string
+
+# ---- customize these ----
+YOUR_NAME = "Riya"
+PARTNER_NAME = "___"
+MET_ON = "2023-02-14T18:30:00"  # ISO: YYYY-MM-DDTHH:MM:SS (local time)
+LOVE_NOTE = (
+    "Here’s the thing — you make ordinary moments feel rare. "
+    "Thanks for being my favorite person."
+)
+# -------------------------
+
+app = Flask(__name__)
+
+HTML = r"""
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>{{ your }} ❤ {{ partner }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: radial-gradient(1200px 800px at 20% 10%, #ffb6c1 0%, rgba(255,192,203,0.2) 35%, transparent 60%),
+          radial-gradient(1000px 1000px at 80% 20%, #ffd1dc 0%, rgba(255,209,220,0.15) 40%, transparent 65%),
+          linear-gradient(135deg, #0f0c29 0%, #302b63 45%, #24243e 100%);
+    --glass: rgba(255,255,255,.16);
+    --glass-border: rgba(255,255,255,.22);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Poppins, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial}
+  body{background:var(--bg); color:#fff; overflow:hidden}
+  .wrap{
+    position:relative; height:100%; width:100%;
+    display:grid; place-items:center; padding:24px;
+  }
+  .card{
+    width:min(880px, 92vw);
+    background:linear-gradient(180deg, var(--glass), rgba(255,255,255,.08));
+    border:1px solid var(--glass-border);
+    border-radius:24px; padding:28px 28px 22px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08);
+  }
+  .title{font-size:clamp(26px, 3.2vw, 40px); font-weight:600; margin:0 0 8px}
+  .subtitle{opacity:.85; margin:0 0 18px; font-weight:300}
+  .grid{display:grid; grid-template-columns:1.2fr .8fr; gap:18px}
+  @media (max-width:820px){ .grid{grid-template-columns:1fr} }
+  .panel{
+    background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.14);
+    border-radius:18px; padding:16px; min-height:180px
+  }
+  #note{font-size:18px; line-height:1.6; min-height:120px; white-space:pre-wrap}
+  .badge{
+    display:inline-flex; gap:10px; align-items:center; padding:8px 12px; border-radius:999px;
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); font-size:14px
+  }
+  .counter{display:flex; gap:14px; flex-wrap:wrap; margin-top:10px}
+  .pill{
+    background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.16);
+    border-radius:12px; padding:10px 12px; min-width:90px; text-align:center
+  }
+  .pill b{display:block; font-size:22px}
+  canvas#hearts{position:absolute; inset:0; z-index:-1}
+  .footer{
+    display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; opacity:.85; font-size:13px
+  }
+  .btn{
+    border:1px solid rgba(255,255,255,.25); background:rgba(255,255,255,.12);
+    color:#fff; padding:9px 14px; border-radius:12px; cursor:pointer; transition:.2s
+  }
+  .btn:hover{transform:translateY(-1px); background:rgba(255,255,255,.16)}
+  .hint{opacity:.7}
+</style>
+</head>
+<body>
+<canvas id="hearts"></canvas>
+<div class="wrap">
+  <div class="card">
+    <div class="badge" title="this page was handcrafted with love">❤ handcrafted for {{ partner }}</div>
+    <h1 class="title">{{ your }} & {{ partner }}</h1>
+    <p class="subtitle">since <span id="since"></span></p>
+
+    <div class="grid">
+      <div class="panel">
+        <div id="note"></div>
+        <div class="footer">
+          <span class="hint">Tip: press <b>L</b> for a surprise · press <b>H</b> to rain hearts</span>
+          <button class="btn" id="btnConfetti">Celebrate</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 style="margin:6px 0 8px">Time with you</h3>
+        <div class="counter" id="counter"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const sinceISO = "{{ met_on }}";
+const note = `{{ love_note }}`;
+
+const since = new Date(sinceISO);
+document.getElementById('since').textContent = since.toLocaleString([], {year:'numeric', month:'short', day:'2-digit'});
+
+function updateCounter(){
+  const now = new Date();
+  let diff = Math.max(0, now - since);
+  const years = Math.floor(diff/ (365.25*24*3600*1000)); diff -= years*(365.25*24*3600*1000);
+  const days = Math.floor(diff/ (24*3600*1000)); diff -= days*(24*3600*1000);
+  const hours = Math.floor(diff/ (3600*1000)); diff -= hours*(3600*1000);
+  const mins = Math.floor(diff/ (60*1000)); diff -= mins*(60*1000);
+  const secs = Math.floor(diff/1000);
+
+  const parts = [
+    ['years', years], ['days', days], ['hours', hours], ['mins', mins], ['secs', secs]
+  ];
+  const el = document.getElementById('counter');
+  el.innerHTML = parts.map(([k,v]) => `<div class="pill"><b>${v}</b>${k}</div>`).join('');
+}
+setInterval(updateCounter, 1000); updateCounter();
+
+// Typewriter
+const noteEl = document.getElementById('note');
+let i=0; const speed = 24;
+function type(){
+  noteEl.textContent = note.slice(0, ++i);
+  if(i < note.length) setTimeout(type, speed);
+}
+type();
+
+// Hearts canvas
+const c = document.getElementById('hearts'), ctx = c.getContext('2d');
+function resize(){ c.width = innerWidth; c.height = innerHeight; }
+addEventListener('resize', resize); resize();
+const hearts = [];
+function spawnHeart(x=Math.random()*c.width, y=c.height + 20, vY= - (1.2 + Math.random()*1.6)){
+  const size = 10 + Math.random()*22;
+  hearts.push({x,y,vx:(Math.random()-.5)*0.8, vy:vY, a:1, r:size});
+}
+function heartPath(ctx, x, y, s){
+  ctx.moveTo(x, y);
+  const r = s/2;
+  ctx.bezierCurveTo(x, y- r, x- s, y- r, x- s, y);
+  ctx.bezierCurveTo(x- s, y+ r, x, y+ r*1.8, x, y+ s*2);
+  ctx.bezierCurveTo(x, y+ r*1.8, x+ s, y+ r, x+ s, y);
+  ctx.bezierCurveTo(x+ s, y- r, x, y- r, x, y);
+}
+let last=0;
+function loop(ts){
+  const dt = (ts - last)/16.7; last=ts;
+  if(Math.random() < 0.25) spawnHeart();
+  ctx.clearRect(0,0,c.width,c.height);
+  hearts.forEach(h=>{
+    h.x += h.vx*dt; h.y += h.vy*dt; h.a -= 0.004*dt;
+    ctx.beginPath(); heartPath(ctx, h.x, h.y, h.r);
+    ctx.fillStyle = `rgba(${200+Math.random()*55},${80+Math.random()*50},${120+Math.random()*80},${Math.max(0,h.a)})`;
+    ctx.fill();
+  });
+  for(let i=hearts.length-1;i>=0;i--) if(hearts[i].a<=0 || hearts[i].y<-60) hearts.splice(i,1);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// Secret keys
+function confettiBurst(n=120){
+  for(let i=0;i<n;i++){
+    spawnHeart(Math.random()*c.width, Math.random()*c.height, - (2.5 + Math.random()*2));
+  }
+}
+document.getElementById('btnConfetti').onclick = ()=>confettiBurst(180);
+addEventListener('keydown', e=>{
+  if(e.key.toLowerCase()==='l') confettiBurst(140);
+  if(e.key.toLowerCase()==='h') for(let i=0;i<40;i++) spawnHeart();
+});
+</script>
+</body>
+</html>
+"""
+
+@app.route("/")
+def home():
+    return render_template_string(
+        HTML,
+        your=YOUR_NAME,
+        partner=PARTNER_NAME or "You",
+        met_on=MET_ON,
+        love_note=LOVE_NOTE
+    )
+
+if __name__ == "__main__":
+    print("Running… open http://127.0.0.1:5000/")
+    app.run(debug=False)
